@@ -10,7 +10,7 @@ function Dashboard() {
       <div className="max-w-4xl mx-auto space-y-6">
         <header className="border-b border-zinc-800 pb-4">
           <h1 className="text-3xl font-extrabold text-emerald-400">منصة التعافي الرقمية</h1>
-          <p className="mt-2 text-zinc-400">مرحباً بك انا داني. من هنا يمكنك البدء في بناء وتصميم أقسام موقعك.</p>
+          <p className="mt-2 text-zinc-400">مرحباً بك انا داني.و الموقع قيد الانشاء حاليا و لم يكتمل بعد.</p>
         </header>
 
         {/* قسم كروت المحتوى التجريبية للتصميم */}
