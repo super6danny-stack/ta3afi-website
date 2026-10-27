@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
+
 
 /* ───────────── النصوص ───────────── */
 
@@ -40,9 +42,7 @@ const ABOUT = {
 
 const TEST = {
   questions: [
-    "هل انتي غبية يا نور ؟",
-    "هل انتي متاكدة ؟" ,
-    "هل انتي مدمنة على داني ؟" ,
+    "هل تشعر أنك لا تستطيع التحكم في استخدامها؟",
     "هل تجد صعوبة في التوقف حتى عندما تريد ذلك بقوة؟",
     "هل أثّرت على دراستك أو عملك أو علاقاتك الشخصية؟",
     "هل تلجأ إليها للهروب من التوتر أو المشاعر السيئة؟",
@@ -122,10 +122,11 @@ function Header({ onLogin }: { onLogin: () => void }) {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <button
           onClick={scrollToTop}
-          className="text-xl font-bold tracking-tight text-amber-100 transition hover:text-amber-50"
-        >
-          {BRAND}
-        </button>
+          className="flex items-center gap-3 text-xl font-bold tracking-tight text-amber-100 transition hover:text-amber-50"
+       >
+         <Image src="/Gemini_Generated_Image_xemfa4xemfa4xemf.png" alt={BRAND} width={36} height={36} />
+           {BRAND}
+       </button>
 
         <button
           onClick={onLogin}
