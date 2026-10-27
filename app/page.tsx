@@ -8,8 +8,8 @@ import Image from "next/image";
 
 const BRAND = "منصة التعافي";
 const FOOTER = "© 2026 منصة التعافي. مساحة آمنة لك.";
-const LOGIN_LABEL = "الدخول";
-const LOGIN_SOON = "خاصية تسجيل الدخول قريباً";
+const LOGIN_LABEL = "تسجيل الدخول";
+const LOGIN_SOON = "خاصية تسجيل الدخول سوف تضاف قريباً";
 
 const HERO = {
   tagline: "خطوتك الأولى نحو حياة خالية من الادمان",
