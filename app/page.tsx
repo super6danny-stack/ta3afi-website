@@ -124,7 +124,7 @@ function Header({ onLogin }: { onLogin: () => void }) {
           onClick={scrollToTop}
           className="flex items-center gap-3 text-xl font-bold tracking-tight text-amber-100 transition hover:text-amber-50"
        >
-         <Image src="/Gemini_Generated_Image_xemfa4xemfa4xemf.png" alt={BRAND} width={36} height={36} />
+         <Image src="/logo.png" alt={BRAND} width={36} height={36} />
            {BRAND}
        </button>
 
