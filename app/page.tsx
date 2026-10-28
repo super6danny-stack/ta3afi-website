@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { signIn } from "next-auth/react";
 
 
 /* ───────────── النصوص ───────────── */
@@ -399,10 +400,8 @@ export default function Home() {
     document.documentElement.dir = "rtl";
   }, []);
 
-  const login = () => {
-    setToast(true);
-    window.setTimeout(() => setToast(false), TOAST_DURATION_MS);
-  };
+  const login = () => signIn("google");
+  
 
   const startTest = () => {
     setView("test");
