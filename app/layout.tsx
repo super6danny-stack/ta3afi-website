@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   title: "منصة التعافي",
   applicationName: "منصة التعافي",
   description: "مساحة آمنة وخاصة تساعدك على فهم عاداتك وبدء طريق التعافي",
-  icons: { icon: "/Gemini_Generated_Image_xemfa4xemfa4xemf.png" },
+  icons: { icon: "/logo.png" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
