@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { signIn } from "next-auth/react";
-
+import { signIn, signOut, useSession } from "next-auth/react";
 
 /* ───────────── النصوص ───────────── */
 
 const BRAND = "منصة التعافي";
 const FOOTER = "© 2026 منصة التعافي. مساحة آمنة لك.";
 const LOGIN_LABEL = "تسجيل الدخول";
-const LOGIN_SOON = "خاصية تسجيل الدخول سوف تضاف قريباً";
+const LOGOUT_LABEL = "خروج";
 
 const HERO = {
   tagline: "خطوتك الأولى نحو حياة خالية من الادمان",
@@ -58,7 +57,6 @@ const TEST = {
     "هل تشعر أن حياتك الاجتماعية أو هواياتك قد تضررت بسببها؟",
     "هل تشعر بالضغط من الآخرين للتوقف أو التقليل منها؟",
     "هل صرت تعتمد عليها أكثر من أي وقت مضى للتعامل مع مشاعرك؟",
-
   ],
   options: ["أبداً", "أحياناً", "غالباً"],
   results: [
@@ -69,12 +67,12 @@ const TEST = {
     },
     {
       title: "مؤشرات متوسطة",
-      desc: "قد تكون هناك بعض المؤشرات التي تستدعي الانتباه. ننصحك بمراجعة متخصص نفسي أو معالج قريباً.",
+      desc: "قد تكون هناك بعض المؤشرات التي تستدعي الانتباه. ننصحك بمراجعة متخصص نفسي أو معالج قريباً و ان تسجل دخولك في موقعنا لتلقي الدعم و التوجيه النفسي",
       tone: "text-amber-400",
     },
     {
       title: "مؤشرات مرتفعة",
-      desc: "ننصحك بشدة بالتحدث مع متخصص نفسي أو معالج في أقرب وقت. أنت لست وحدك.",
+      desc: "لديك مؤشرات ادمان مرتفعة ،يستحسن ان تزور اخصائيا نفسيا في اقرب وقت ممكن و ان تسجل دخولك في موقعنا لتلقي الدعم و التوجيه النفسي و المهام اليومية التي تساعدك على التعافي",
       tone: "text-rose-400",
     },
   ],
@@ -111,30 +109,51 @@ const SUPPORT = {
 
 const PAUSE_SECONDS = 60;
 const TYPING_DELAY_MS = 60;
-const TOAST_DURATION_MS = 2500;
 
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
 /* ───────────── المكوّنات ───────────── */
 
-function Header({ onLogin }: { onLogin: () => void }) {
+function Header({
+  onLogin,
+  onLogout,
+  loading,
+  userName,
+}: {
+  onLogin: () => void;
+  onLogout: () => void;
+  loading: boolean;
+  userName: string | null;
+}) {
   return (
     <header className="sticky top-0 z-50 border-b border-amber-900/20 bg-amber-950/40 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <button
           onClick={scrollToTop}
           className="flex items-center gap-3 text-xl font-bold tracking-tight text-amber-100 transition hover:text-amber-50"
-       >
-         <Image src="/logo.png" alt={BRAND} width={36} height={36} />
-           {BRAND}
-       </button>
-
-        <button
-          onClick={onLogin}
-          className="rounded-lg bg-emerald-700/80 px-5 py-2 text-sm font-semibold text-amber-50 transition hover:scale-105 hover:bg-emerald-600 active:scale-95"
         >
-          {LOGIN_LABEL}
+          <Image src="/logo.png" alt={BRAND} width={36} height={36} />
+          {BRAND}
         </button>
+
+        {loading ? null : userName ? (
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold text-amber-100">{userName}</span>
+            <button
+              onClick={onLogout}
+              className="rounded-lg border border-amber-800/60 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-900/30"
+            >
+              {LOGOUT_LABEL}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onLogin}
+            className="rounded-lg bg-emerald-700/80 px-5 py-2 text-sm font-semibold text-amber-50 transition hover:scale-105 hover:bg-emerald-600 active:scale-95"
+          >
+            {LOGIN_LABEL}
+          </button>
+        )}
       </div>
     </header>
   );
@@ -320,7 +339,8 @@ function TestSection({ onBack }: { onBack: () => void }) {
 
   const total = TEST.questions.length;
   const done = step >= total;
-  const level = score <= 3 ? 0 : score <= 6 ? 1 : 2;
+  const ratio = score / (total * 2);
+  const level = ratio <= 0.3 ? 0 : ratio <= 0.6 ? 1 : 2;
   const result = TEST.results[level];
 
   const answer = (value: number) => {
@@ -393,7 +413,7 @@ function TestSection({ onBack }: { onBack: () => void }) {
 
 export default function Home() {
   const [view, setView] = useState<"home" | "test">("home");
-  const [toast, setToast] = useState(false);
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     document.documentElement.lang = "ar";
@@ -401,7 +421,7 @@ export default function Home() {
   }, []);
 
   const login = () => signIn("google");
-  
+  const logout = () => signOut();
 
   const startTest = () => {
     setView("test");
@@ -415,7 +435,12 @@ export default function Home() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-[#17140f] text-amber-50">
-      <Header onLogin={login} />
+      <Header
+        onLogin={login}
+        onLogout={logout}
+        loading={status === "loading"}
+        userName={session?.user?.name ?? null}
+      />
 
       <main>
         {view === "home" ? (
@@ -433,16 +458,6 @@ export default function Home() {
       <footer className="border-t border-amber-900/30 px-6 py-6 text-center text-sm text-amber-200/60">
         {FOOTER}
       </footer>
-
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl border border-amber-800/40 bg-amber-950 px-5 py-3 text-amber-100 shadow-xl"
-        >
-          {LOGIN_SOON}
-        </div>
-      )}
     </div>
   );
 }
