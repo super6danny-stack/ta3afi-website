@@ -87,6 +87,7 @@ const CHAT = {
   inputPlaceholder: "اكتب رسالتك... (سيُفعّل النموذج قريباً)",
   send: "إرسال",
   soon: "نموذج الذكاء الاصطناعي سيتم ربطه هنا قريباً.",
+  back: "العودة للرئيسية",
 };
 
 const HERO = {
@@ -450,28 +451,15 @@ function OnboardingFlow({
 
 /* ───── الدردشة (زر + لوحة، سيتم ربطها بالنموذج لاحقاً) ───── */
 
-function ChatPanel({
+function ChatPage({
   answers,
-  open,
-  onClose,
+  onBack,
 }: {
   answers: OnboardingAnswers;
-  open: boolean;
-  onClose: () => void;
+  onBack: () => void;
 }) {
   const [messages, setMessages] = useState<{ from: "user" | "bot"; text: string }[]>([]);
   const [input, setInput] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
 
   const hasContext = Object.values(answers).some((a) => a?.trim());
 
@@ -483,74 +471,71 @@ function ChatPanel({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 px-4 pb-4 sm:items-center">
-      <div className="flex h-[80vh] w-full max-w-xl flex-col rounded-2xl border border-amber-900/40 bg-[#17140f]">
-        <div className="flex items-center justify-between border-b border-amber-900/30 px-5 py-4">
-          <h2 className="text-lg font-bold text-amber-50">{CHAT.title}</h2>
-          <button
-            onClick={onClose}
-            aria-label="إغلاق"
-            className="rounded-lg border border-amber-800/60 px-3 py-1 text-amber-100 hover:bg-amber-900/30"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="border-b border-amber-900/30 px-5 py-3">
-          <p className="text-sm text-amber-200/70">{CHAT.desc}</p>
-          <p className="mt-2 text-sm font-semibold text-amber-100">{CHAT.contextLabel}</p>
-          {hasContext ? (
-            <ul className="mt-1 max-h-28 space-y-1 overflow-y-auto text-sm text-amber-200/80">
-              {ONBOARDING.questions.map((q, i) =>
-                answers[i]?.trim() ? (
-                  <li key={i}>
-                    <span className="text-amber-300/60">{q}</span> — {answers[i]}
-                  </li>
-                ) : null
-              )}
-            </ul>
-          ) : (
-            <p className="mt-1 text-sm text-amber-300/50">{CHAT.noContext}</p>
-          )}
-        </div>
-
-        <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
-          {messages.length === 0 ? (
-            <p className="text-center text-amber-300/50">{CHAT.soon}</p>
-          ) : (
-            messages.map((m, i) => (
-              <div key={i} className={m.from === "user" ? "text-left" : "text-right"}>
-                <span
-                  className={`inline-block max-w-[80%] rounded-xl px-4 py-2 text-sm ${
-                    m.from === "user"
-                      ? "bg-emerald-800/60 text-amber-50"
-                      : "bg-amber-900/40 text-amber-100"
-                  }`}
-                >
-                  {m.text}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="flex gap-2 border-t border-amber-900/30 px-5 py-4">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder={CHAT.inputPlaceholder}
-            className="flex-1 rounded-xl border border-amber-800/50 bg-amber-950/40 px-4 py-2.5 text-amber-50 outline-none focus:border-emerald-600"
-          />
-          <button
-            onClick={send}
-            className="rounded-xl bg-emerald-700 px-5 py-2.5 font-bold text-amber-50 transition hover:bg-emerald-600"
-          >
-            {CHAT.send}
-          </button>
-        </div>
+    <section className="mx-auto flex min-h-[calc(100vh-200px)] max-w-3xl flex-col px-6 py-10">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-amber-50">{CHAT.title}</h1>
+        <button
+          onClick={onBack}
+          className="rounded-xl border border-amber-800/60 px-5 py-2.5 font-bold text-amber-100 transition hover:bg-amber-900/30"
+        >
+          {CHAT.back}
+        </button>
       </div>
-    </div>
+      <p className="mt-2 text-amber-200/70">{CHAT.desc}</p>
+
+      <div className="mt-6 rounded-2xl border border-amber-900/30 bg-amber-950/30 p-5">
+        <p className="text-sm font-semibold text-amber-100">{CHAT.contextLabel}</p>
+        {hasContext ? (
+          <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto text-sm leading-relaxed text-amber-200/80">
+            {ONBOARDING.questions.map((q, i) =>
+              answers[i]?.trim() ? (
+                <li key={i}>
+                  <span className="text-amber-300/60">{q}</span> — {answers[i]}
+                </li>
+              ) : null
+            )}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-amber-300/50">{CHAT.noContext}</p>
+        )}
+      </div>
+
+      <div className="mt-6 flex-1 space-y-3 overflow-y-auto rounded-2xl border border-amber-900/30 bg-amber-950/20 p-5">
+        {messages.length === 0 ? (
+          <p className="pt-10 text-center text-amber-300/50">{CHAT.soon}</p>
+        ) : (
+          messages.map((m, i) => (
+            <div key={i} className={m.from === "user" ? "text-left" : "text-right"}>
+              <span
+                className={`inline-block max-w-[80%] rounded-xl px-4 py-2 text-sm leading-relaxed ${
+                  m.from === "user"
+                    ? "bg-emerald-800/60 text-amber-50"
+                    : "bg-amber-900/40 text-amber-100"
+                }`}
+              >
+                {m.text}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="mt-4 flex gap-2">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && send()}
+          placeholder={CHAT.inputPlaceholder}
+          className="flex-1 rounded-xl border border-amber-800/50 bg-amber-950/40 px-4 py-3 text-amber-50 outline-none focus:border-emerald-600"
+        />
+        <button
+          onClick={send}
+          className="rounded-xl bg-emerald-700 px-6 py-3 font-bold text-amber-50 transition hover:bg-emerald-600"
+        >
+          {CHAT.send}
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -877,7 +862,7 @@ function NameModal({
 /* ───────────── الصفحة الرئيسية ───────────── */
 
 export default function Home() {
-  const [view, setView] = useState<"home" | "test">("home");
+  const [view, setView] = useState<"home" | "test" | "chat">("home");
   const { data: session, status } = useSession();
   const email = session?.user?.email ?? null;
 
@@ -888,7 +873,6 @@ export default function Home() {
   const [visits, setVisits] = useState<string[]>([]);
   const [goodDays, setGoodDays] = useState<string[]>([]);
   const [markedToday, setMarkedToday] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.lang = "ar";
@@ -1013,8 +997,10 @@ export default function Home() {
             <Features />
             <About />
           </>
-        ) : (
+        ) : view === "test" ? (
           <TestSection onBack={goHome} />
+        ) : (
+          <ChatPage answers={answers} onBack={goHome} />
         )}
       </main>
 
@@ -1022,8 +1008,9 @@ export default function Home() {
         {FOOTER}
       </footer>
 
-      {loggedIn && <ChatButton onClick={() => setChatOpen(true)} />}
-      <ChatPanel answers={answers} open={chatOpen} onClose={() => setChatOpen(false)} />
+      {loggedIn && view !== "chat" && (
+        <ChatButton onClick={() => { setView("chat"); scrollToTop(); }} />
+      )}
 
       {nameModal && (
         <NameModal
