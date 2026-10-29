@@ -10,6 +10,18 @@ const BRAND = "منصة التعافي";
 const FOOTER = "© 2026 منصة التعافي. مساحة آمنة لك.";
 const LOGIN_LABEL = "تسجيل الدخول";
 const LOGOUT_LABEL = "خروج";
+const SETTINGS_LABEL = "الإعدادات";
+
+const NAME_MODAL = {
+  title: "اختر اسمك",
+  desc: "هذا الاسم سيظهر لك في الموقع، ويمكنك تغييره لاحقاً من الإعدادات.",
+  placeholder: "اكتب اسمك هنا",
+  save: "حفظ",
+  cancel: "إلغاء",
+};
+
+const NAME_MAX_LENGTH = 24;
+const nameStorageKey = (email: string) => `username:${email}`;
 
 const HERO = {
   tagline: "خطوتك الأولى نحو حياة خالية من الادمان",
@@ -117,11 +129,13 @@ const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 function Header({
   onLogin,
   onLogout,
+  onSettings,
   loading,
   userName,
 }: {
   onLogin: () => void;
   onLogout: () => void;
+  onSettings: () => void;
   loading: boolean;
   userName: string | null;
 }) {
@@ -139,6 +153,12 @@ function Header({
         {loading ? null : userName ? (
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold text-amber-100">{userName}</span>
+            <button
+              onClick={onSettings}
+              className="rounded-lg border border-amber-800/60 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-900/30"
+            >
+              {SETTINGS_LABEL}
+            </button>
             <button
               onClick={onLogout}
               className="rounded-lg border border-amber-800/60 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-900/30"
@@ -409,16 +429,101 @@ function TestSection({ onBack }: { onBack: () => void }) {
   );
 }
 
+function NameModal({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: string;
+  onSave: (name: string) => void;
+  onCancel?: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const clean = value.trim();
+
+  const submit = () => {
+    if (clean) onSave(clean);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-md rounded-2xl border border-amber-900/40 bg-[#17140f] p-8"
+      >
+        <h2 className="text-2xl font-bold text-amber-50">{NAME_MODAL.title}</h2>
+        <p className="mt-2 leading-relaxed text-amber-200/70">{NAME_MODAL.desc}</p>
+        <input
+          autoFocus
+          value={value}
+          maxLength={NAME_MAX_LENGTH}
+          placeholder={NAME_MODAL.placeholder}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submit();
+          }}
+          className="mt-6 w-full rounded-xl border border-amber-800/50 bg-amber-950/40 px-4 py-3 text-amber-50 outline-none focus:border-emerald-600"
+        />
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button
+            onClick={submit}
+            disabled={!clean}
+            className="rounded-xl bg-emerald-700 px-6 py-2.5 font-bold text-amber-50 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {NAME_MODAL.save}
+          </button>
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="rounded-xl border border-amber-800/60 px-6 py-2.5 font-bold text-amber-100 transition hover:bg-amber-900/30"
+            >
+              {NAME_MODAL.cancel}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ───────────── الصفحة الرئيسية ───────────── */
 
 export default function Home() {
   const [view, setView] = useState<"home" | "test">("home");
   const { data: session, status } = useSession();
+  const email = session?.user?.email ?? null;
+  const [username, setUsername] = useState<string | null>(null);
+  const [nameModal, setNameModal] = useState<"first" | "edit" | null>(null);
 
   useEffect(() => {
     document.documentElement.lang = "ar";
     document.documentElement.dir = "rtl";
   }, []);
+
+  useEffect(() => {
+    if (!email) {
+      setUsername(null);
+      setNameModal(null);
+      return;
+    }
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(nameStorageKey(email));
+    } catch {}
+    setUsername(saved);
+    setNameModal(saved ? null : "first");
+  }, [email]);
+
+  const saveName = (name: string) => {
+    if (email) {
+      try {
+        localStorage.setItem(nameStorageKey(email), name);
+      } catch {}
+    }
+    setUsername(name);
+    setNameModal(null);
+  };
 
   const login = () => signIn("google");
   const logout = () => signOut();
@@ -438,8 +543,9 @@ export default function Home() {
       <Header
         onLogin={login}
         onLogout={logout}
+        onSettings={() => setNameModal("edit")}
         loading={status === "loading"}
-        userName={session?.user?.name ?? null}
+        userName={username ?? session?.user?.name ?? null}
       />
 
       <main>
@@ -458,6 +564,14 @@ export default function Home() {
       <footer className="border-t border-amber-900/30 px-6 py-6 text-center text-sm text-amber-200/60">
         {FOOTER}
       </footer>
+
+      {nameModal && (
+        <NameModal
+          initial={username ?? ""}
+          onSave={saveName}
+          onCancel={nameModal === "edit" ? () => setNameModal(null) : undefined}
+        />
+      )}
     </div>
   );
 }
