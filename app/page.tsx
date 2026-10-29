@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { signIn, signOut, useSession } from "next-auth/react";
 
@@ -11,6 +11,7 @@ const FOOTER = "© 2026 منصة التعافي. مساحة آمنة لك.";
 const LOGIN_LABEL = "تسجيل الدخول";
 const LOGOUT_LABEL = "خروج";
 const SETTINGS_LABEL = "الإعدادات";
+const TEST_LABEL = "الاختبار";
 
 const NAME_MODAL = {
   title: "اختر اسمك",
@@ -22,6 +23,71 @@ const NAME_MODAL = {
 
 const NAME_MAX_LENGTH = 24;
 const nameStorageKey = (email: string) => `username:${email}`;
+
+/* ───── الترحيب بعد الدخول ───── */
+
+const WELCOME = {
+  title: (name: string) => `أهلاً بك يا ${name} 👋`,
+  motivational: [
+    "اليوم يوم جديد، وأنت أقوى مما كنت أمس.",
+    "كل خطوة صغيرة في الاتجاه الصحيح تُحسب.",
+    "التعافي ليس خطاً مستقيماً، المهم أنك لا تتوقف.",
+    "أنت هنا، وهذا يعني أنك تختار نفسك. استمر.",
+    "لا تُقارن نفسك بأحد، قارن نفسك بمن كنت عليه بالأمس.",
+  ],
+};
+
+/* ───── أسئلة التعارف (تُعرض بعد الدخول وتُحفظ إجاباتها) ───── */
+/* لاحقاً يقرأها نموذج الذكاء الاصطناعي كسياق لبداية الحوار. */
+
+const ONBOARDING = {
+  title: "لنتعرّف عليك",
+  desc: "بضعة أسئلة قصيرة، إجاباتك تُحفظ خصيصاً لك وتستخدمها المساعدة الذكية لاحقاً.",
+  done: "تم حفظ إجاباتك، يمكنك تعديلها في أي وقت من الإعدادات.",
+  skip: "تخطي",
+  next: "التالي",
+  prev: "السابق",
+  finish: "إنهاء",
+  edit: "تعديل الإجابات",
+  questions: [
+    "ما الذي دفعك للانضمام إلى المنصة الآن؟",
+    "ما العادة أو الإدمان الذي تريد التعافي منه؟",
+    "منذ متى وأنت تعاني من هذه المشكلة؟",
+    "ما أصعب موقف واجهك بسببها؟",
+    "هل سبق أن حاولت التوقف؟ ماذا حدث؟",
+    "من الأشخاص الداعمون لك في هذه الرحلة؟",
+    "ما الهدف الذي تحلم به بعد التعافي؟",
+    "كيف تصف حالتك النفسية هذه الفترة؟",
+    "ما الذي يشعرك بالرغبة أو الضغط غالباً؟",
+    "ما الرسالة التي تريد أن تقولها لنفسك في يوم التعافي؟",
+  ],
+};
+
+/* ───── قسم التقدم ───── */
+
+const PROGRESS = {
+  title: "تقدّمك",
+  desc: "سجلّ زياراتك وأيامك الجيدة يُحفظ على جهازك فقط.",
+  daysVisited: "أيام زيارتك للموقع",
+  goodDays: "أيام أديتَ فيها بشكل جيد",
+  streak: "أيام متتالية",
+  markToday: "أنهيت اليوم بشكل جيد ✅",
+  marked: "تم تسجيل اليوم، أحسنت!",
+  perWeek: "زيارات آخر 7 أيام",
+};
+
+/* ───── الدردشة (سيتم ربطها بنموذج ذكاء اصطناعي لاحقاً) ───── */
+
+const CHAT = {
+  button: "دردشة",
+  title: "المساعدة الذكية",
+  desc: "قريباً: محادثة مع نموذج ذكاء اصطناعي يعرف قصتك من إجاباتك.",
+  contextLabel: "معلوماتك التي سيعرفها المساعد:",
+  noContext: "أكمل أسئلة التعارف أولاً ليعرف المساعد قصتك.",
+  inputPlaceholder: "اكتب رسالتك... (سيُفعّل النموذج قريباً)",
+  send: "إرسال",
+  soon: "نموذج الذكاء الاصطناعي سيتم ربطه هنا قريباً.",
+};
 
 const HERO = {
   tagline: "خطوتك الأولى نحو حياة خالية من الادمان",
@@ -124,24 +190,45 @@ const TYPING_DELAY_MS = 60;
 
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
+/* ───── أدوات التخزين ───── */
+
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+const readJSON = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeJSON = (key: string, value: unknown) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+};
+
 /* ───────────── المكوّنات ───────────── */
 
 function Header({
   onLogin,
   onLogout,
   onSettings,
+  onTest,
   loading,
   userName,
 }: {
   onLogin: () => void;
   onLogout: () => void;
   onSettings: () => void;
+  onTest: () => void;
   loading: boolean;
   userName: string | null;
 }) {
   return (
     <header className="sticky top-0 z-50 border-b border-amber-900/20 bg-amber-950/40 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-6 py-4">
         <button
           onClick={scrollToTop}
           className="flex items-center gap-3 text-xl font-bold tracking-tight text-amber-100 transition hover:text-amber-50"
@@ -152,6 +239,12 @@ function Header({
 
         {loading ? null : userName ? (
           <div className="flex items-center gap-4">
+            <button
+              onClick={onTest}
+              className="rounded-lg border border-amber-800/60 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-900/30"
+            >
+              {TEST_LABEL}
+            </button>
             <span className="text-sm font-semibold text-amber-100">{userName}</span>
             <button
               onClick={onSettings}
@@ -176,6 +269,300 @@ function Header({
         )}
       </div>
     </header>
+  );
+}
+
+/* ───── الترحيب بعد الدخول ───── */
+
+function WelcomeBanner({ name }: { name: string }) {
+  const dayIndex = new Date().getDate() % WELCOME.motivational.length;
+  return (
+    <section className="mx-auto max-w-4xl px-6 pt-10">
+      <div className="rounded-2xl border border-emerald-800/40 bg-emerald-950/30 p-8 text-center">
+        <h2 className="text-3xl font-bold text-amber-50 md:text-4xl">
+          {WELCOME.title(name)}
+        </h2>
+        <p className="mt-3 text-lg leading-relaxed text-emerald-200/90">
+          {WELCOME.motivational[dayIndex]}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ───── قسم التقدم ───── */
+
+function ProgressSection({
+  visits,
+  goodDays,
+  onMarkGood,
+  markedToday,
+}: {
+  visits: string[];
+  goodDays: string[];
+  onMarkGood: () => void;
+  markedToday: boolean;
+}) {
+  const streak = useMemo(() => {
+    const set = new Set(visits);
+    let count = 0;
+    const d = new Date();
+    while (set.has(d.toISOString().slice(0, 10))) {
+      count++;
+      d.setDate(d.getDate() - 1);
+    }
+    return count;
+  }, [visits]);
+
+  const weekCount = useMemo(() => {
+    const set = new Set(visits);
+    let count = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      if (set.has(d.toISOString().slice(0, 10))) count++;
+    }
+    return count;
+  }, [visits]);
+
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-12">
+      <h2 className="text-center text-3xl font-bold text-amber-50">{PROGRESS.title}</h2>
+      <p className="mt-2 text-center text-amber-200/70">{PROGRESS.desc}</p>
+
+      <div className="mt-8 grid gap-5 md:grid-cols-3">
+        <div className="rounded-2xl border border-amber-900/30 bg-amber-950/30 p-7 text-center">
+          <p className="text-4xl font-bold text-emerald-400">{visits.length}</p>
+          <p className="mt-2 text-amber-200/80">{PROGRESS.daysVisited}</p>
+          <p className="mt-1 text-sm text-amber-300/50">
+            {PROGRESS.perWeek}: {weekCount}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-amber-900/30 bg-amber-950/30 p-7 text-center">
+          <p className="text-4xl font-bold text-emerald-400">{goodDays.length}</p>
+          <p className="mt-2 text-amber-200/80">{PROGRESS.goodDays}</p>
+          <p className="mt-1 text-sm text-amber-300/50">{PROGRESS.streak}: {streak}</p>
+        </div>
+        <div className="rounded-2xl border border-amber-900/30 bg-amber-950/30 p-7 text-center">
+          <button
+            onClick={onMarkGood}
+            disabled={markedToday}
+            className="rounded-xl bg-emerald-700 px-6 py-3 font-bold text-amber-50 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {markedToday ? PROGRESS.marked : PROGRESS.markToday}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ───── أسئلة التعارف ───── */
+
+type OnboardingAnswers = Record<number, string>;
+
+function OnboardingFlow({
+  initial,
+  onDone,
+  onSkip,
+}: {
+  initial: OnboardingAnswers;
+  onDone: (answers: OnboardingAnswers) => void;
+  onSkip?: () => void;
+}) {
+  const [index, setIndex] = useState(0);
+  const [answers, setAnswers] = useState<OnboardingAnswers>(initial);
+
+  const total = ONBOARDING.questions.length;
+  const isLast = index === total - 1;
+  const canNext = (answers[index] ?? "").trim().length > 0;
+
+  const finish = () => onDone(answers);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-lg rounded-2xl border border-amber-900/40 bg-[#17140f] p-8"
+      >
+        <h2 className="text-2xl font-bold text-amber-50">{ONBOARDING.title}</h2>
+        <p className="mt-2 leading-relaxed text-amber-200/70">{ONBOARDING.desc}</p>
+
+        <div className="mt-6 h-2 overflow-hidden rounded-full bg-amber-900/30">
+          <div
+            className="h-full bg-emerald-600 transition-all"
+            style={{ width: `${((index + 1) / total) * 100}%` }}
+          />
+        </div>
+        <p className="mt-2 text-sm text-amber-300/60">
+          {index + 1} / {total}
+        </p>
+
+        <h3 className="mt-4 text-xl font-semibold leading-relaxed text-amber-100">
+          {ONBOARDING.questions[index]}
+        </h3>
+        <textarea
+          autoFocus
+          rows={3}
+          value={answers[index] ?? ""}
+          placeholder="اكتب إجابتك بحرية..."
+          onChange={(e) => setAnswers((a) => ({ ...a, [index]: e.target.value }))}
+          className="mt-4 w-full resize-none rounded-xl border border-amber-800/50 bg-amber-950/40 px-4 py-3 text-amber-50 outline-none focus:border-emerald-600"
+        />
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIndex((i) => Math.max(0, i - 1))}
+              disabled={index === 0}
+              className="rounded-xl border border-amber-800/60 px-5 py-2.5 font-bold text-amber-100 transition hover:bg-amber-900/30 disabled:opacity-40"
+            >
+              {ONBOARDING.prev}
+            </button>
+            {isLast ? (
+              <button
+                onClick={finish}
+                className="rounded-xl bg-emerald-700 px-6 py-2.5 font-bold text-amber-50 transition hover:bg-emerald-600"
+              >
+                {ONBOARDING.finish}
+              </button>
+            ) : (
+              <button
+                onClick={() => canNext && setIndex((i) => i + 1)}
+                disabled={!canNext}
+                className="rounded-xl bg-emerald-700 px-6 py-2.5 font-bold text-amber-50 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {ONBOARDING.next}
+              </button>
+            )}
+          </div>
+          {onSkip && (
+            <button onClick={onSkip} className="text-sm text-amber-300/60 hover:text-amber-200">
+              {ONBOARDING.skip}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───── الدردشة (زر + لوحة، سيتم ربطها بالنموذج لاحقاً) ───── */
+
+function ChatPanel({
+  answers,
+  open,
+  onClose,
+}: {
+  answers: OnboardingAnswers;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [messages, setMessages] = useState<{ from: "user" | "bot"; text: string }[]>([]);
+  const [input, setInput] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const hasContext = Object.values(answers).some((a) => a?.trim());
+
+  const send = () => {
+    const text = input.trim();
+    if (!text) return;
+    setMessages((m) => [...m, { from: "user", text }, { from: "bot", text: CHAT.soon }]);
+    setInput("");
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 px-4 pb-4 sm:items-center">
+      <div className="flex h-[80vh] w-full max-w-xl flex-col rounded-2xl border border-amber-900/40 bg-[#17140f]">
+        <div className="flex items-center justify-between border-b border-amber-900/30 px-5 py-4">
+          <h2 className="text-lg font-bold text-amber-50">{CHAT.title}</h2>
+          <button
+            onClick={onClose}
+            aria-label="إغلاق"
+            className="rounded-lg border border-amber-800/60 px-3 py-1 text-amber-100 hover:bg-amber-900/30"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="border-b border-amber-900/30 px-5 py-3">
+          <p className="text-sm text-amber-200/70">{CHAT.desc}</p>
+          <p className="mt-2 text-sm font-semibold text-amber-100">{CHAT.contextLabel}</p>
+          {hasContext ? (
+            <ul className="mt-1 max-h-28 space-y-1 overflow-y-auto text-sm text-amber-200/80">
+              {ONBOARDING.questions.map((q, i) =>
+                answers[i]?.trim() ? (
+                  <li key={i}>
+                    <span className="text-amber-300/60">{q}</span> — {answers[i]}
+                  </li>
+                ) : null
+              )}
+            </ul>
+          ) : (
+            <p className="mt-1 text-sm text-amber-300/50">{CHAT.noContext}</p>
+          )}
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+          {messages.length === 0 ? (
+            <p className="text-center text-amber-300/50">{CHAT.soon}</p>
+          ) : (
+            messages.map((m, i) => (
+              <div key={i} className={m.from === "user" ? "text-left" : "text-right"}>
+                <span
+                  className={`inline-block max-w-[80%] rounded-xl px-4 py-2 text-sm ${
+                    m.from === "user"
+                      ? "bg-emerald-800/60 text-amber-50"
+                      : "bg-amber-900/40 text-amber-100"
+                  }`}
+                >
+                  {m.text}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="flex gap-2 border-t border-amber-900/30 px-5 py-4">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+            placeholder={CHAT.inputPlaceholder}
+            className="flex-1 rounded-xl border border-amber-800/50 bg-amber-950/40 px-4 py-2.5 text-amber-50 outline-none focus:border-emerald-600"
+          />
+          <button
+            onClick={send}
+            className="rounded-xl bg-emerald-700 px-5 py-2.5 font-bold text-amber-50 transition hover:bg-emerald-600"
+          >
+            {CHAT.send}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChatButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="fixed bottom-6 left-6 z-40 flex items-center gap-2 rounded-full bg-emerald-700 px-5 py-3.5 font-bold text-amber-50 shadow-lg shadow-emerald-900/40 transition hover:scale-105 hover:bg-emerald-600 active:scale-95"
+    >
+      <span aria-hidden>💬</span>
+      {CHAT.button}
+    </button>
   );
 }
 
@@ -493,26 +880,55 @@ export default function Home() {
   const [view, setView] = useState<"home" | "test">("home");
   const { data: session, status } = useSession();
   const email = session?.user?.email ?? null;
+
   const [username, setUsername] = useState<string | null>(null);
   const [nameModal, setNameModal] = useState<"first" | "edit" | null>(null);
+  const [onboardingModal, setOnboardingModal] = useState(false);
+  const [answers, setAnswers] = useState<OnboardingAnswers>({});
+  const [visits, setVisits] = useState<string[]>([]);
+  const [goodDays, setGoodDays] = useState<string[]>([]);
+  const [markedToday, setMarkedToday] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.lang = "ar";
     document.documentElement.dir = "rtl";
   }, []);
 
+  /* عند الدخول: الاسم، أسئلة التعارف، وتسجيل زيارة اليوم */
   useEffect(() => {
     if (!email) {
       setUsername(null);
       setNameModal(null);
+      setOnboardingModal(false);
+      setAnswers({});
+      setVisits([]);
+      setGoodDays([]);
+      setMarkedToday(false);
       return;
     }
-    let saved: string | null = null;
+
+    let savedName: string | null = null;
     try {
-      saved = localStorage.getItem(nameStorageKey(email));
+      savedName = localStorage.getItem(nameStorageKey(email));
     } catch {}
-    setUsername(saved);
-    setNameModal(saved ? null : "first");
+    setUsername(savedName);
+    setNameModal(savedName ? null : "first");
+
+    const savedAnswers = readJSON<OnboardingAnswers>(`onboarding:${email}`, {});
+    setAnswers(savedAnswers);
+    setOnboardingModal(Object.keys(savedAnswers).length === 0);
+
+    const visitKey = `visits:${email}`;
+    const visitList = readJSON<string[]>(visitKey, []);
+    const today = todayKey();
+    const newVisits = visitList.includes(today) ? visitList : [...visitList, today];
+    setVisits(newVisits);
+    writeJSON(visitKey, newVisits);
+
+    const goodList = readJSON<string[]>(`gooddays:${email}`, []);
+    setGoodDays(goodList);
+    setMarkedToday(goodList.includes(today));
   }, [email]);
 
   const saveName = (name: string) => {
@@ -523,6 +939,21 @@ export default function Home() {
     }
     setUsername(name);
     setNameModal(null);
+  };
+
+  const saveOnboarding = (a: OnboardingAnswers) => {
+    if (email) writeJSON(`onboarding:${email}`, a);
+    setAnswers(a);
+    setOnboardingModal(false);
+  };
+
+  const markGoodDay = () => {
+    if (!email || markedToday) return;
+    const today = todayKey();
+    const newGood = [...goodDays, today];
+    setGoodDays(newGood);
+    setMarkedToday(true);
+    writeJSON(`gooddays:${email}`, newGood);
   };
 
   const login = () => signIn("google");
@@ -538,12 +969,15 @@ export default function Home() {
     scrollToTop();
   };
 
+  const loggedIn = Boolean(email);
+
   return (
     <div dir="rtl" className="min-h-screen bg-[#17140f] text-amber-50">
       <Header
         onLogin={login}
         onLogout={logout}
         onSettings={() => setNameModal("edit")}
+        onTest={startTest}
         loading={status === "loading"}
         userName={username ?? session?.user?.name ?? null}
       />
@@ -551,7 +985,30 @@ export default function Home() {
       <main>
         {view === "home" ? (
           <>
+            {loggedIn && username && <WelcomeBanner name={username} />}
+
             <HeroSection onTestStart={startTest} />
+
+            {loggedIn && (
+              <ProgressSection
+                visits={visits}
+                goodDays={goodDays}
+                onMarkGood={markGoodDay}
+                markedToday={markedToday}
+              />
+            )}
+
+            {loggedIn && (
+              <section className="mx-auto max-w-6xl px-6 pb-4 text-center">
+                <button
+                  onClick={() => setOnboardingModal(true)}
+                  className="rounded-xl border border-amber-800/60 px-6 py-2.5 font-bold text-amber-100 transition hover:bg-amber-900/30"
+                >
+                  {ONBOARDING.edit}
+                </button>
+              </section>
+            )}
+
             <SupportTools />
             <Features />
             <About />
@@ -565,11 +1022,22 @@ export default function Home() {
         {FOOTER}
       </footer>
 
+      {loggedIn && <ChatButton onClick={() => setChatOpen(true)} />}
+      <ChatPanel answers={answers} open={chatOpen} onClose={() => setChatOpen(false)} />
+
       {nameModal && (
         <NameModal
           initial={username ?? ""}
           onSave={saveName}
           onCancel={nameModal === "edit" ? () => setNameModal(null) : undefined}
+        />
+      )}
+
+      {onboardingModal && (
+        <OnboardingFlow
+          initial={answers}
+          onDone={saveOnboarding}
+          onSkip={() => setOnboardingModal(false)}
         />
       )}
     </div>
